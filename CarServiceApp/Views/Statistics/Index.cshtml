@@ -1,0 +1,29 @@
+﻿@{
+    ViewData["Title"] = "Статистика";
+}
+
+<h2>Статистика</h2>
+
+<p><strong>Выполненных заявок:</strong> @ViewBag.CompletedCount</p>
+<p><strong>Среднее время ремонта:</strong> @ViewBag.AvgTime</p>
+
+<h3>Статистика по проблемам</h3>
+<table class="table">
+    <thead>
+        <tr>
+            <th>Описание проблемы</th>
+            <th>Количество</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in ViewBag.ProblemStats)
+        {
+            <tr>
+                <td>@item.Problem</td>
+                <td>@item.Count</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<a asp-controller="Requests" asp-action="Index" class="btn btn-secondary">Назад</a>

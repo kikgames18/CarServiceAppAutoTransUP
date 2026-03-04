@@ -1,0 +1,79 @@
+﻿@model CarServiceApp.Models.Request
+@{
+    ViewData["Title"] = Model.RequestID == 0 ? "Новая заявка" : "Редактирование заявки №" + Model.RequestID;
+    var userType = ViewBag.CurrentUserType as string;
+    var userId = ViewBag.CurrentUserId as int?;
+    var clients = ViewBag.Clients as List<CarServiceApp.Models.User>;
+    var masters = ViewBag.Masters as List<CarServiceApp.Models.User>;
+}
+
+<h2>@ViewData["Title"]</h2>
+
+<form asp-action="Edit" method="post">
+    <input type="hidden" asp-for="RequestID" />
+
+    <div class="form-group">
+        <label asp-for="ClientID">Клиент</label>
+        <select asp-for="ClientID" class="form-control" asp-items="@(new SelectList(clients, "UserID", "FIO"))" required></select>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="MasterID">Механик</label>
+        <select asp-for="MasterID" class="form-control">
+            <option value="">Не назначен</option>
+            @foreach (var m in masters)
+            {
+                <option value="@m.UserID">@m.FIO</option>
+            }
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="CarType">Тип авто</label>
+        <input asp-for="CarType" class="form-control" required />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="CarModel">Модель</label>
+        <input asp-for="CarModel" class="form-control" required />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ProblemDescription">Описание проблемы</label>
+        <textarea asp-for="ProblemDescription" class="form-control" rows="3" required></textarea>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="RequestStatus">Статус</label>
+        <select asp-for="RequestStatus" class="form-control">
+            <option>Новая заявка</option>
+            <option>В процессе ремонта</option>
+            <option>Готова к выдаче</option>
+            <option>Ожидание автозапчастей</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="StartDate">Дата начала</label>
+        <input asp-for="StartDate" type="date" class="form-control" required />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="CompletionDate">Дата завершения</label>
+        <input asp-for="CompletionDate" type="date" class="form-control" />
+    </div>
+
+    <div class="form-group">
+        <label asp-for="RepairParts">Использованные запчасти</label>
+        <textarea asp-for="RepairParts" class="form-control" rows="3"></textarea>
+    </div>
+
+    @if (userType == "Заказчик")
+    {
+        // Заказчик не может менять некоторые поля – можно добавить readonly через JS или атрибуты
+        // Для простоты оставляем как есть, но на уровне контроллера проверки нет
+    }
+
+    <button type="submit" class="btn btn-primary">Сохранить</button>
+    <a asp-action="Index" class="btn btn-secondary">Отмена</a>
+</form>

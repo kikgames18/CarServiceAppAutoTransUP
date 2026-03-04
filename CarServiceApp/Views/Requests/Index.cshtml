@@ -1,0 +1,59 @@
+﻿@model List<CarServiceApp.Models.Request>
+@{
+    ViewData["Title"] = "Список заявок";
+    var userType = Context.Session.GetString("UserType");
+    var userId = Context.Session.GetInt32("UserId");
+}
+
+<h2>Заявки на ремонт</h2>
+
+@if (userType == "Заказчик" || userType == "Оператор" || userType == "Менеджер")
+{
+    <p>
+        <a asp-action="Edit" class="btn btn-success">Новая заявка</a>
+    </p>
+}
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>№</th>
+            <th>Дата начала</th>
+            <th>Тип авто</th>
+            <th>Модель</th>
+            <th>Описание</th>
+            <th>Статус</th>
+            <th>Дата заверш.</th>
+            <th>Механик</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var req in Model)
+        {
+            <tr>
+                <td>@req.RequestID</td>
+                <td>@req.StartDate.ToShortDateString()</td>
+                <td>@req.CarType</td>
+                <td>@req.CarModel</td>
+                <td>@req.ProblemDescription</td>
+                <td>@req.RequestStatus</td>
+                <td>@(req.CompletionDate?.ToShortDateString())</td>
+                <td>@req.MasterID</td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@req.RequestID" class="btn btn-sm btn-info">Детали</a>
+                    @if (userType != "Заказчик" || req.ClientID == userId)
+                    {
+                        <a asp-action="Edit" asp-route-id="@req.RequestID" class="btn btn-sm btn-warning">Изменить</a>
+                    }
+                    @if (userType == "Оператор" || userType == "Менеджер")
+                    {
+                        <form asp-action="Delete" asp-route-id="@req.RequestID" method="post" style="display:inline;" onsubmit="return confirm('Удалить заявку №@req.RequestID?');">
+                            <button type="submit" class="btn btn-sm btn-danger">Удалить</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

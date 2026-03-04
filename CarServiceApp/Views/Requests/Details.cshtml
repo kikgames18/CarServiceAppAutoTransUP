@@ -1,0 +1,51 @@
+﻿@model CarServiceApp.Models.Request
+@{
+    ViewData["Title"] = $"Заявка №{Model.RequestID}";
+    var comments = ViewBag.Comments as List<CarServiceApp.Models.Comment>;
+    var userType = ViewBag.CurrentUserType as string;
+    var userId = ViewBag.CurrentUserId as int?;
+}
+
+<h2>Детали заявки №@Model.RequestID</h2>
+
+<table class="table">
+    <tr><th>Клиент</th><td>@Model.ClientID</td></tr>
+    <tr><th>Механик</th><td>@Model.MasterID</td></tr>
+    <tr><th>Тип авто</th><td>@Model.CarType</td></tr>
+    <tr><th>Модель</th><td>@Model.CarModel</td></tr>
+    <tr><th>Описание</th><td>@Model.ProblemDescription</td></tr>
+    <tr><th>Статус</th><td>@Model.RequestStatus</td></tr>
+    <tr><th>Дата начала</th><td>@Model.StartDate.ToShortDateString()</td></tr>
+    <tr><th>Дата завершения</th><td>@(Model.CompletionDate?.ToShortDateString())</td></tr>
+    <tr><th>Запчасти</th><td>@Model.RepairParts</td></tr>
+</table>
+
+<h3>Комментарии</h3>
+@if (comments == null || comments.Count == 0)
+{
+    <p>Комментариев нет.</p>
+}
+else
+{
+    <ul class="list-group mb-3">
+        @foreach (var c in comments)
+        {
+            <li class="list-group-item">
+                <strong>@c.MasterID</strong>: @c.Message
+            </li>
+        }
+    </ul>
+}
+
+@if (userType == "Автомеханик" || userType == "Менеджер")
+{
+    <form asp-controller="Comments" asp-action="Add" method="post">
+        <input type="hidden" name="requestId" value="@Model.RequestID" />
+        <div class="form-group">
+            <textarea name="message" class="form-control" rows="2" placeholder="Новый комментарий" required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Добавить комментарий</button>
+    </form>
+}
+
+<a asp-action="Index" class="btn btn-secondary mt-2">Назад к списку</a>
