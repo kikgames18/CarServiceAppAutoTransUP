@@ -1,40 +1,41 @@
-﻿using CarServiceApp.Models;
-using CarServiceApp.Services;
+﻿using CarServiceApp.Data;
+using CarServiceApp.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CarServiceApp.Controllers
 {
     public class RequestsController : Controller
     {
-        private readonly DataService _dataService;
+        private readonly AppDbContext _context;
 
-        public RequestsController(DataService dataService)
+        public RequestsController(AppDbContext context)
         {
-            _dataService = dataService;
+            _context = context;
         }
 
-        // Проверка аутентификации
         private bool IsAuthenticated() => HttpContext.Session.GetInt32("UserId") != null;
         private string CurrentUserType() => HttpContext.Session.GetString("UserType");
         private int CurrentUserId() => HttpContext.Session.GetInt32("UserId") ?? 0;
 
         // GET: /Requests
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
             if (!IsAuthenticated())
                 return RedirectToAction("Login", "Account");
 
-            var requests = _dataService.Requests.AsEnumerable();
+            IQueryable<Request> requests = _context.Requests
+                .Include(r => r.Client)
+                .Include(r => r.Master);
 
-            // Если пользователь - заказчик, показываем только его заявки
             if (CurrentUserType() == "Заказчик")
                 requests = requests.Where(r => r.ClientID == CurrentUserId());
 
-            return View(requests.ToList());
+            return View(await requests.ToListAsync());
         }
 
-        // GET: /Requests/Edit/5 (если id=0 – новая заявка)
-        public IActionResult Edit(int? id)
+        // GET: /Requests/Edit/5
+        public async Task<IActionResult> Edit(int? id)
         {
             if (!IsAuthenticated())
                 return RedirectToAction("Login", "Account");
@@ -42,7 +43,6 @@ namespace CarServiceApp.Controllers
             Request request;
             if (id == null || id == 0)
             {
-                // Новая заявка
                 request = new Request
                 {
                     StartDate = DateTime.Today,
@@ -51,13 +51,13 @@ namespace CarServiceApp.Controllers
             }
             else
             {
-                request = _dataService.Requests.FirstOrDefault(r => r.RequestID == id);
+                request = await _context.Requests.FindAsync(id);
                 if (request == null)
                     return NotFound();
             }
 
-            ViewBag.Clients = _dataService.Users.Where(u => u.Type == "Заказчик").ToList();
-            ViewBag.Masters = _dataService.Users.Where(u => u.Type == "Автомеханик").ToList();
+            ViewBag.Clients = await _context.Users.Where(u => u.Type == "Заказчик").ToListAsync();
+            ViewBag.Masters = await _context.Users.Where(u => u.Type == "Автомеханик").ToListAsync();
             ViewBag.CurrentUserType = CurrentUserType();
             ViewBag.CurrentUserId = CurrentUserId();
 
@@ -66,20 +66,20 @@ namespace CarServiceApp.Controllers
 
         // POST: /Requests/Edit
         [HttpPost]
-        public IActionResult Edit(Request request)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(Request request)
         {
             if (!IsAuthenticated())
                 return RedirectToAction("Login", "Account");
 
-            // Для новой заявки
             if (request.RequestID == 0)
             {
-                request.RequestID = _dataService.GetNextRequestId();
-                _dataService.Requests.Add(request);
+                _context.Requests.Add(request);
+                await _context.SaveChangesAsync();
             }
             else
             {
-                var existing = _dataService.Requests.FirstOrDefault(r => r.RequestID == request.RequestID);
+                var existing = await _context.Requests.FindAsync(request.RequestID);
                 if (existing == null)
                     return NotFound();
 
@@ -91,8 +91,9 @@ namespace CarServiceApp.Controllers
                 existing.RepairParts = request.RepairParts;
                 existing.MasterID = request.MasterID;
                 existing.ClientID = request.ClientID;
-                // StartDate обычно не меняется, но можно разрешить
                 existing.StartDate = request.StartDate;
+
+                await _context.SaveChangesAsync();
             }
 
             return RedirectToAction("Index");
@@ -100,33 +101,41 @@ namespace CarServiceApp.Controllers
 
         // POST: /Requests/Delete/5
         [HttpPost]
-        public IActionResult Delete(int id)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Delete(int id)
         {
             if (!IsAuthenticated() || (CurrentUserType() != "Оператор" && CurrentUserType() != "Менеджер"))
                 return Forbid();
 
-            var request = _dataService.Requests.FirstOrDefault(r => r.RequestID == id);
+            var request = await _context.Requests.FindAsync(id);
             if (request != null)
             {
-                _dataService.Requests.Remove(request);
-                // Удаляем связанные комментарии
-                _dataService.Comments.RemoveAll(c => c.RequestID == id);
+                _context.Requests.Remove(request);
+                await _context.SaveChangesAsync();
             }
 
             return RedirectToAction("Index");
         }
 
         // GET: /Requests/Details/5
-        public IActionResult Details(int id)
+        public async Task<IActionResult> Details(int id)
         {
             if (!IsAuthenticated())
                 return RedirectToAction("Login", "Account");
 
-            var request = _dataService.Requests.FirstOrDefault(r => r.RequestID == id);
+            var request = await _context.Requests
+                .Include(r => r.Client)
+                .Include(r => r.Master)
+                .FirstOrDefaultAsync(r => r.RequestID == id);
+
             if (request == null)
                 return NotFound();
 
-            var comments = _dataService.Comments.Where(c => c.RequestID == id).ToList();
+            var comments = await _context.Comments
+                .Where(c => c.RequestID == id)
+                .Include(c => c.Master)
+                .ToListAsync();
+
             ViewBag.Comments = comments;
             ViewBag.CurrentUserType = CurrentUserType();
             ViewBag.CurrentUserId = CurrentUserId();

@@ -1,30 +1,30 @@
-﻿using CarServiceApp.Models;
-using CarServiceApp.Services;
+﻿using CarServiceApp.Data;
+using CarServiceApp.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CarServiceApp.Controllers
 {
     public class CommentsController : Controller
     {
-        private readonly DataService _dataService;
+        private readonly AppDbContext _context;
 
-        public CommentsController(DataService dataService)
+        public CommentsController(AppDbContext context)
         {
-            _dataService = dataService;
+            _context = context;
         }
 
         private bool IsAuthenticated() => HttpContext.Session.GetInt32("UserId") != null;
         private int CurrentUserId() => HttpContext.Session.GetInt32("UserId") ?? 0;
         private string CurrentUserType() => HttpContext.Session.GetString("UserType");
 
-        // POST: /Comments/Add
         [HttpPost]
-        public IActionResult Add(int requestId, string message)
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Add(int requestId, string message)
         {
             if (!IsAuthenticated())
                 return Unauthorized();
 
-            // Только механик или менеджер могут добавлять комментарии
             if (CurrentUserType() != "Автомеханик" && CurrentUserType() != "Менеджер")
                 return Forbid();
 
@@ -33,15 +33,14 @@ namespace CarServiceApp.Controllers
 
             var comment = new Comment
             {
-                CommentID = _dataService.GetNextCommentId(),
                 Message = message,
                 MasterID = CurrentUserId(),
                 RequestID = requestId
             };
 
-            _dataService.Comments.Add(comment);
+            _context.Comments.Add(comment);
+            await _context.SaveChangesAsync();
 
-            // Возвращаемся на страницу деталей заявки
             return RedirectToAction("Details", "Requests", new { id = requestId });
         }
     }

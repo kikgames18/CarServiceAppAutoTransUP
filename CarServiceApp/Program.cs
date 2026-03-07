@@ -1,14 +1,16 @@
-using CarServiceApp.Services;
+using CarServiceApp.Data;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Добавляем сервисы MVC
+// Добавляем MVC
 builder.Services.AddControllersWithViews();
 
-// Регистрируем DataService как синглтон (загружает CSV и хранит данные в памяти)
-builder.Services.AddSingleton<DataService>();
+// Регистрируем DbContext
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Настраиваем сессии
+// Сессии
 builder.Services.AddDistributedMemoryCache();
 builder.Services.AddSession(options =>
 {
@@ -19,7 +21,6 @@ builder.Services.AddSession(options =>
 
 var app = builder.Build();
 
-// Конфигурация pipeline
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
@@ -29,10 +30,9 @@ if (!app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseStaticFiles();
 app.UseRouting();
-app.UseSession(); // обязательно после UseRouting и до UseAuthorization
+app.UseSession();
 app.UseAuthorization();
 
-// Маршрут по умолчанию – сразу на страницу входа
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Account}/{action=Login}/{id?}");
