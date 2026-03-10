@@ -9,8 +9,8 @@
 <h2>Детали заявки №@Model.RequestID</h2>
 
 <table class="table">
-    <tr><th>Клиент</th><td>@Model.ClientID</td></tr>
-    <tr><th>Механик</th><td>@Model.MasterID</td></tr>
+    <tr><th>Клиент</th><td>@(Model.Client?.FIO ?? "Не указан") (ID: @Model.ClientID)</td></tr>
+    <tr><th>Механик</th><td>@(Model.Master?.FIO ?? "Не назначен") (ID: @Model.MasterID)</td></tr>
     <tr><th>Тип авто</th><td>@Model.CarType</td></tr>
     <tr><th>Модель</th><td>@Model.CarModel</td></tr>
     <tr><th>Описание</th><td>@Model.ProblemDescription</td></tr>
@@ -18,6 +18,11 @@
     <tr><th>Дата начала</th><td>@Model.StartDate.ToShortDateString()</td></tr>
     <tr><th>Дата завершения</th><td>@(Model.CompletionDate?.ToShortDateString())</td></tr>
     <tr><th>Запчасти</th><td>@Model.RepairParts</td></tr>
+    @if (userType == "Менеджер по качеству" || userType == "Менеджер")
+    {
+        <tr><th>Продлённый срок</th><td>@(Model.ExtendedDeadline?.ToShortDateString() ?? "—")</td></tr>
+        <tr><th>Согласовано с клиентом</th><td>@(Model.DeadlineAgreed ? "Да" : "Нет")</td></tr>
+    }
 </table>
 
 <h3>Комментарии</h3>
@@ -31,13 +36,13 @@ else
         @foreach (var c in comments)
         {
             <li class="list-group-item">
-                <strong>@c.MasterID</strong>: @c.Message
+                <strong>@(c.Master?.FIO ?? c.MasterID.ToString())</strong>: @c.Message
             </li>
         }
     </ul>
 }
 
-@if (userType == "Автомеханик" || userType == "Менеджер")
+@if (userType == "Автомеханик" || userType == "Менеджер" || userType == "Менеджер по качеству")
 {
     <form asp-controller="Comments" asp-action="Add" method="post">
         <input type="hidden" name="requestId" value="@Model.RequestID" />
@@ -48,4 +53,11 @@ else
     </form>
 }
 
-<a asp-action="Index" class="btn btn-secondary mt-2">Назад к списку</a>using CarServiceApp.Services
+@if (userType == "Заказчик")
+{
+    <h3>Оцените качество обслуживания</h3>
+    <p>Отсканируйте QR-код, чтобы оставить отзыв:</p>
+    <img src="@Url.Action("QrCode", "Requests", new { id = Model.RequestID })" alt="QR-код для отзыва" style="width: 200px; height: 200px;" />
+}
+
+<a asp-action="Index" class="btn btn-secondary mt-2">Назад к списку</a>

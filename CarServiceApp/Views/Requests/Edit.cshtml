@@ -68,10 +68,16 @@
         <textarea asp-for="RepairParts" class="form-control" rows="3"></textarea>
     </div>
 
-    @if (userType == "Заказчик")
+    @if (userType == "Менеджер по качеству" || userType == "Менеджер")
     {
-        // Заказчик не может менять некоторые поля – можно добавить readonly через JS или атрибуты
-        // Для простоты оставляем как есть, но на уровне контроллера проверки нет
+        <div class="form-group">
+            <label asp-for="ExtendedDeadline">Продлённый срок (новая дата завершения)</label>
+            <input asp-for="ExtendedDeadline" type="date" class="form-control" />
+        </div>
+        <div class="form-group form-check">
+            <input asp-for="DeadlineAgreed" class="form-check-input" />
+            <label asp-for="DeadlineAgreed" class="form-check-label">Согласовано с клиентом</label>
+        </div>
     }
 
     <button type="submit" class="btn btn-primary">Сохранить</button>

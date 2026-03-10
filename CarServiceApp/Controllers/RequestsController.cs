@@ -2,12 +2,14 @@
 using CarServiceApp.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using QRCoder; // Не забудьте добавить using
 
 namespace CarServiceApp.Controllers
 {
     public class RequestsController : Controller
     {
         private readonly AppDbContext _context;
+        private readonly string _feedbackFormUrl = "https://docs.google.com/forms/d/e/1FAIpQLSdhZcExx6LSIXxk0ub55mSu-WIh23WYdGG9HY5EZhLDo7P8eA/viewform?usp=sf_link";
 
         public RequestsController(AppDbContext context)
         {
@@ -57,7 +59,7 @@ namespace CarServiceApp.Controllers
             }
 
             ViewBag.Clients = await _context.Users.Where(u => u.Type == "Заказчик").ToListAsync();
-            ViewBag.Masters = await _context.Users.Where(u => u.Type == "Автомеханик").ToListAsync();
+            ViewBag.Masters = await _context.Users.Where(u => u.Type == "Автомеханик" || u.Type == "Менеджер по качеству").ToListAsync(); // менеджер по качеству тоже может быть назначен?
             ViewBag.CurrentUserType = CurrentUserType();
             ViewBag.CurrentUserId = CurrentUserId();
 
@@ -74,6 +76,7 @@ namespace CarServiceApp.Controllers
 
             if (request.RequestID == 0)
             {
+                // Новая заявка
                 _context.Requests.Add(request);
                 await _context.SaveChangesAsync();
             }
@@ -83,15 +86,24 @@ namespace CarServiceApp.Controllers
                 if (existing == null)
                     return NotFound();
 
+                // Общие поля (доступны всем)
                 existing.CarType = request.CarType;
                 existing.CarModel = request.CarModel;
                 existing.ProblemDescription = request.ProblemDescription;
                 existing.RequestStatus = request.RequestStatus;
                 existing.CompletionDate = request.CompletionDate;
                 existing.RepairParts = request.RepairParts;
-                existing.MasterID = request.MasterID;
-                existing.ClientID = request.ClientID;
-                existing.StartDate = request.StartDate;
+
+                // Поля, доступные только менеджеру по качеству (и обычному менеджеру)
+                if (CurrentUserType() == "Менеджер по качеству" || CurrentUserType() == "Менеджер")
+                {
+                    existing.MasterID = request.MasterID;
+                    existing.ExtendedDeadline = request.ExtendedDeadline;
+                    existing.DeadlineAgreed = request.DeadlineAgreed;
+                }
+
+                // Можно разрешить изменение клиента только определённым ролям
+                // existing.ClientID = request.ClientID;
 
                 await _context.SaveChangesAsync();
             }
@@ -141,6 +153,21 @@ namespace CarServiceApp.Controllers
             ViewBag.CurrentUserId = CurrentUserId();
 
             return View(request);
+        }
+
+        // GET: /Requests/QrCode/5 (возвращает изображение QR-кода)
+        public IActionResult QrCode(int id)
+        {
+            // Можно использовать id для создания уникальной ссылки, если нужно
+            // Например, можно добавить параметр ?requestId=id к URL формы.
+            // Но в задании ссылка фиксированная.
+            using (var qrGenerator = new QRCodeGenerator())
+            using (var qrCodeData = qrGenerator.CreateQrCode(_feedbackFormUrl, QRCodeGenerator.ECCLevel.Q))
+            using (var qrCode = new PngByteQRCode(qrCodeData))
+            {
+                byte[] qrCodeImage = qrCode.GetGraphic(20);
+                return File(qrCodeImage, "image/png");
+            }
         }
     }
 }
